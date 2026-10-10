@@ -1,3 +1,26 @@
+# Football possession detection (work in progress)
+
+I'm working on the **More than a Hack 2027** challenge (Metrica Sports × FC Barcelona):
+given player and ball tracking data from a football match, label every frame with which
+team has the ball.
+
+**What I've done so far**
+- Ran and studied the provided baseline (nearest player to the ball, then smoothing).
+  Best score on my practice match: spellF1 0.376
+- Measured where it fails: in the first half, the baseline has no answer on ~45% of frames,
+  because the ball isn't tracked
+- Started finding these gaps, so I can infer possession while the ball is hidden
+- My analysis notebook: [practice/my_analysis.ipynb](practice/my_analysis.ipynb)
+
+**Data:** the real match data is licensed for the competition only and is not included.
+I develop on a simulated match in the same format (`practice/make_fake_data.py`).
+
+**Next:** fill hidden-ball gaps using who had the ball before and after, and detect dead balls.
+
+*Below is the original challenge README from Metrica Sports (MIT licensed).*
+
+---
+
 # More than a Hack 2027 — Phase 1: Ball Possession
 
 **Organised by [Metrica Sports](https://metrica-sports.com), [FC Barcelona](https://www.fcbarcelona.com)
