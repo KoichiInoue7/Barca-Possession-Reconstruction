@@ -5,15 +5,27 @@ given player and ball tracking data from a football match, label every frame wit
 team has the ball.
 
 **What I've done so far**
+**What I've done so far**
 - Ran and studied the provided baseline (nearest player to the ball, then smoothing).
-  Best score on my practice match: spellF1 0.376
+  Baseline score on my practice match: spellF1 0.376
 - Measured where it fails: in the first half, the baseline has no answer on ~45% of frames,
   because the ball isn't tracked
 - Wrote a gap detector: the ball disappears 953 times in the first half
 - Filled gaps where the same team had the ball before and after: unknown frames
-  dropped from 35,633 to 12,058; spellF1 on the practice match 0.376 → 0.400
-- Found that ~30% of the filled frames were really dead-ball time
+  dropped from 35,633 to 12,058
+- Found that ~30% of the filled frames were really dead-ball time, so I parsed the raw
+  tracking file myself to get the ball's x/y position for every frame
+- Added a dead-ball rule: if the ball reappears at a sideline after a gap, it was a
+  throw-in, so the gap stays a dead ball instead of being filled
+- Result on the practice match (first half improved): spellF1 0.376 → 0.401
+- Tested ideas that didn't help and dropped them (projecting the ball's trajectory
+  before a gap; forcing possession to the other team after a throw-in)
 - My analysis notebook: [practice/my_analysis.ipynb](practice/my_analysis.ipynb)
+
+**Next:**
+- Turn the gap logic into a function and apply it to the second half
+- Handle "hard gaps", where possession changes while the ball is hidden
+  (90% of these are live play, not dead balls)
 
 **Next:** use the ball's last position before each gap to detect when it went out of play.
 
