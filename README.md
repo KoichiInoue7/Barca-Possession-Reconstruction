@@ -9,13 +9,16 @@ team has the ball.
   Best score on my practice match: spellF1 0.376
 - Measured where it fails: in the first half, the baseline has no answer on ~45% of frames,
   because the ball isn't tracked
-- Started finding these gaps, so I can infer possession while the ball is hidden
+- Wrote a gap detector: the ball disappears 953 times in the first half
+- Filled gaps where the same team had the ball before and after: unknown frames
+  dropped from 35,633 to 12,058; spellF1 on the practice match 0.376 → 0.400
+- Found that ~30% of the filled frames were really dead-ball time
 - My analysis notebook: [practice/my_analysis.ipynb](practice/my_analysis.ipynb)
+
+**Next:** use the ball's last position before each gap to detect when it went out of play.
 
 **Data:** the real match data is licensed for the competition only and is not included.
 I develop on a simulated match in the same format (`practice/make_fake_data.py`).
-
-**Next:** fill hidden-ball gaps using who had the ball before and after, and detect dead balls.
 
 *Below is the original challenge README from Metrica Sports (MIT licensed).*
 
