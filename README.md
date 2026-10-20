@@ -1,45 +1,73 @@
 # Football possession detection (work in progress)
-
+ 
 I'm working on the **More than a Hack 2027** challenge (Metrica Sports × FC Barcelona):
 given player and ball tracking data from a football match, label every frame with which
-team has the ball.
-
-**What I've done so far**
-- Ran and studied the provided baseline (nearest player to the ball, then smoothing).
-  Best score on my practice match: spellF1 0.376
-- Measured where it fails: in the first half, the baseline has no answer on ~45% of frames,
-  because the ball isn't tracked
-- Wrote a gap detector: the ball disappears 953 times in the first half
-- Filled gaps where the same team had the ball before and after: unknown frames
-  dropped from 35,633 to 12,058; spellF1 on the practice match 0.376 → 0.400
-- Found that ~30% of the filled frames were really dead-ball time
-- My analysis notebook: [practice/my_analysis.ipynb](practice/my_analysis.ipynb)
-
-**Next:** use the ball's last position before each gap to detect when it went out of play.
-
+team has the ball (**H** home, **A** away, or **D** dead ball).
+ 
+**My code is in [`practice/`](practice/).** Everything in `starter/` and `evaluation/` is
+the organisers' code. My analysis notebook: [practice/my_analysis.ipynb](practice/my_analysis.ipynb)
+ 
 **Data:** the real match data is licensed for the competition only and is not included.
-I develop on a simulated match in the same format (`practice/make_fake_data.py`).
-
-*Below is the original challenge README from Metrica Sports (MIT licensed).*
-
+Until it arrives I develop on a simulated match in the same format (`practice/make_fake_data.py`),
+so all numbers below are from that practice match.
+ 
+## Results so far (practice match, first half)
+ 
+| Version | spellF1 |
+|---|---|
+| Organisers' baseline (nearest player to the ball, smoothed) | 0.376 |
+| + my gap filling and sideline dead-ball rule | **0.401** |
+ 
+## What I've done
+ 
+- **Measured where the baseline fails.** In the first half it has no answer on ~45% of frames
+  (35,633 frames), because the ball isn't tracked. The ball disappears 953 times.
+- **Same-team gap filling.** If the same team had the ball right before and right after a gap,
+  fill the gap with that team. Unknown frames dropped from 35,633 to 12,058.
+- **Dead-ball rule.** I parsed the raw tracking file myself to get the ball's x/y on every frame.
+  If the ball reappears at a sideline after a gap, it was probably a throw-in, so the gap is left
+  as a dead ball instead of being filled.
+- **Checked the rule against the answer key.** About 62% of the frames it fills are correct;
+  27% were really dead balls (e.g. the same team restarting after a throw-in or free kick)
+  and 11% were the other team.
+- **Found a pattern in those dead balls.** Gaps that were really dead balls are about 3× longer
+  (median 42 vs 16 frames) and the ball usually reappears close to where it vanished,
+  which fits a foul followed by a free kick.
+- **Found a pipeline bug.** The baseline's smoothing step (a majority vote over ±125 frames) only
+  outputs D when no team is seen in the whole window, so most gaps I left as "dead" were being
+  filled again afterwards. Dead-ball decisions need to be applied *after* smoothing.
+- **Dropped ideas that didn't help:** projecting the ball's trajectory before a gap; forcing
+  possession to the other team after a throw-in.
+## In progress
+ 
+- Use Metrica's Smart Tagging (set pieces: throw-ins, free kicks, goal kicks, corners) to detect
+  dead balls inside gaps, and apply those dead balls after smoothing.
+- **Hard gaps** (possession changes while the ball is hidden): estimate the ball's position on
+  each hidden frame with a straight line from where it disappeared to where it reappeared
+  (`ball_path`), then switch possession when the other team's players reach it.
+- Turn the gap logic into a function and run it on both halves.
 ---
-
+ 
+*Below is the original challenge README from Metrica Sports (MIT licensed).*
+ 
+---
+ 
 # More than a Hack 2027 — Phase 1: Ball Possession
-
+ 
 **Organised by [Metrica Sports](https://metrica-sports.com), [FC Barcelona](https://www.fcbarcelona.com)
 and the [Mobile World Capital Barcelona](https://www.mwcbarcelona.com)**, at the Talent Arena in Barcelona.
-
+ 
 A football data challenge on real professional match data, open to analysts, data scientists and
 engineers. You are given one complete LaLiga match — two camera feeds, automatic tracking of every
 player and the ball, automatic tactical tagging, and the camera-to-pitch geometry — and one
 question to answer with it.
-
+ 
 ---
-
+ 
 ## The task
-
+ 
 **For every frame of the match, say who has the ball.**
-
+ 
 ```
 frame,label
 11185,A        away in possession, ball alive
@@ -49,18 +77,18 @@ frame,label
 ...
 18684,H        home in possession, ball alive
 ```
-
+ 
 That is the whole task. One CSV, one row per video frame, 199,319 rows. It is scored automatically
 against a private frame-by-frame ground truth, so there is a number at the end and no argument
 about it — no jury, and no presentation to argue from.
-
+ 
 The tracking is automatic and uncorrected: it has gaps and identity
 switches, and the ball itself is invisible on 41% of the frames you are scored on.
-
+ 
 ---
-
+ 
 ## The challenge in one screen
-
+ 
 | |                                                                                                                           |
 |---|---------------------------------------------------------------------------------------------------------------------------|
 | **Input** | one full match: tactical video, broadcast video, automatic tracking **with the ball** for both, Smart Tagging, homography |
@@ -70,30 +98,30 @@ switches, and the ball itself is invisible on 41% of the frames you are scored o
 | **Baseline to beat** | `spellF1` **0.2433**, in this repository                                                                                  |
 | **Ground truth you get** | the first **5 minutes** of play                                                                                           |
 | **Ground truth you are scored on** | the full match, **private**                                                                                               |
-
+ 
 It is deliberately **not** a tracking challenge. The tracking, tagging and homography are given to
 you so that nobody has to rebuild detection, re-identification and camera calibration before
 getting to the actual question. See [CHALLENGE.md](CHALLENGE.md).
-
+ 
 ---
-
+ 
 ## Try it right now
-
+ 
 The scorer, a 5-minute ground truth and four working baselines are in this repository. No
 enrolment, no download, no data:
-
+ 
 ```bash
 pip install -r requirements.txt
 python evaluation/run_evaluation.py
 ```
-
+ 
 Scored on the public 5 minutes, not on the full match -- which is why the order below is not the
 order of the floor quoted above:
-
+ 
 ```
 scoreboard  gt/BAR-ATH_possession_gt_public.csv  199319 frames  7500 graded  21 gt segments
 ground truth has 17 possessions of mean 14.2 s  <- compare the poss and dur columns
-
+ 
 rank  submission                macroF1  spellF1   poss     dur  
 ----  ------------------------  -------  -------  -----  ------  
    1  baseline_smooth125         0.5812   0.4242     16    18.5  
@@ -101,40 +129,39 @@ rank  submission                macroF1  spellF1   poss     dur
    3  baseline_smooth25          0.6200   0.2868     36     7.6  
    4  baseline_raw               0.5972   0.0378    131     2.0  
 ```
-
+ 
 Those four are **the same algorithm four times** — nearest tracked player to the ball, then a
 majority vote over a window. Only the window changes. `macroF1` barely moves; `spellF1` moves by a
 factor of eleven. That disagreement is the whole point of the metric, and
 [EVALUATION.md](EVALUATION.md) explains it.
-
+ 
 Once you have the data, regenerate them yourself and go further:
-
+ 
 ```bash
 python starter/baseline.py                              # rebuild the four baselines
 python evaluation/validate_submission.py <your>.csv     # before every submission
 ```
-
+ 
 **Validate every file before you submit it.** `validate_submission.py` runs exactly the checks the
 official scorer runs, and a file that fails them is dropped from the board with a one-line reason.
 It takes two seconds and it is the single most common way a good entry scores nothing.
-
+ 
 ---
-
+ 
 ## Getting the data
-
+ 
 The match assets are released to enrolled participants who have accepted the terms of use.
-
+ 
 1. Enrol: **[More than A Hack 2027](https://landing.mobileworldcapital.com/more-than-a-hack-2027)**
 2. Read and sign the terms and conditions in the registration form
 3. You receive a download link.
 4. Unpack it into `./data`, or point `MTAH_DATA_DIR` at wherever you put it.
-
 Full description of every asset and how the frames line up: **[DATA.md](DATA.md)**.
-
+ 
 ---
-
+ 
 ## Read these, in this order
-
+ 
 | | |
 |---|---|
 | **[CHALLENGE.md](CHALLENGE.md)** | the problem, the four labels, what counts as possession |
@@ -144,12 +171,12 @@ Full description of every asset and how the frames line up: **[DATA.md](DATA.md)
 | **[RULES.md](RULES.md)** | what you may and may not do |
 | **[FAQ.md](FAQ.md)** | |
 | **[OVERVIEW.md](OVERVIEW.md)** | the competition as a whole — context, why the 2027 format changed, the calendar |
-
-
+ 
+ 
 ---
-
+ 
 ## What is in this repository
-
+ 
 ```
 games.py                    per-match constants, asset paths and the frame alignment
 evaluation/
@@ -169,47 +196,47 @@ starter/
   03_first_submission.ipynb data in, scored submission out — start here
 data/                       unpack the downloaded match assets here. Empty in a fresh clone
 ```
-
+ 
 The scorer you run locally is the scorer that decides the competition. If it scores on your
 machine, it scores the same way on ours.
-
+ 
 ---
-
+ 
 ## Requirements
-
+ 
 **Python 3.8 or newer.** The evaluation needs `numpy` and `pandas` and nothing else; it is tested
 under 3.8 and 3.11 and produces identical output under both. `starter/baseline.py` needs nothing
 more either — you can reach a scored submission without installing anything else.
-
+ 
 The notebooks additionally want `kloppy` and `matplotlib` (`requirements-starter.txt`), and
 **Python 3.9+ is recommended for those**: on Windows, installing Jupyter under 3.8 hits a
 `pywinpty` build failure that has nothing to do with this repository.
-
+ 
 ---
-
+ 
 ## Timeline
-
+ 
 | |                |
 |---|----------------|
 | registration opens | **October 1, 2026** |
 | data released | **October 20, 2026** |
 | submission deadline | **November 17, 2026** |
 | results announced | **Before November 26, 2026**      |
-
+ 
 ---
-
+ 
 ## Questions
-
+ 
 Open an issue for anything about the data, the metrics or the documentation — corrections are
 genuinely useful, and a fix that helps you helps everyone equally. For enrolment and the terms of
 use: **hackathon.talentarena@mobileworldcapital.com**.
-
+ 
 ## Licence and citation
-
+ 
 The code and documentation in this repository are released under the MIT Licence — see
 [LICENSE](LICENSE). **The match data is not covered by it**: it is separately licensed for this
 competition only, under the terms you accept at enrolment.
-
+ 
 ```bibtex
 @misc{mtah2027,
   title  = {More than a Hack 2027: Phase 1 - Ball Possession},
@@ -219,3 +246,4 @@ competition only, under the terms you accept at enrolment.
   url    = {https://github.com/metrica-sports/more-than-a-hack-2027}
 }
 ```
+ 
